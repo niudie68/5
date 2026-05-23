@@ -66,7 +66,7 @@
 
     // 表示したい銘柄のリスト
 
-  // 表示したい銘柄・為替のリスト
+// 表示したい銘柄・為替の全リスト
     const items = [
         { code: "2330", name: "フォーサイド", market: "東証スタンダード", unit: "円" },
         { code: "2370", name: "メディネット", market: "東証グロース", unit: "円" },
@@ -76,16 +76,25 @@
         { code: "CNY100", name: "100円の人民元", market: "為替（100円あたり）", unit: "元" }
     ];
 
-    // 1. 画面にすべてのカードを初期配置する
+    // 1. 画面にすべてのカードを初期配置する関数
     function initBoard() {
         const board = document.getElementById("stock-board");
-        board.innerHTML = ""; 
+        board.innerHTML = ""; // 初期化
         
         items.forEach(item => {
             const card = document.createElement("div");
             card.className = "stock-card";
+            
+            // 市場・コード表示の文字列を作成（為替と株価で表示形式を分ける）
+            let marketText = "";
+            if (item.code === "USD" || item.code === "CNY100") {
+                marketText = item.market;
+            } else {
+                marketText = `${item.market}: ${item.code}`;
+            }
+
             card.innerHTML = `
-                <div class="stock-code">${item.market}${item.code.includes('USD') || item.code.includes('CNY') ? '' : ': ' + item.code}</div>
+                <div class="stock-code">${marketText}</div>
                 <div class="stock-name">${item.name}</div>
                 <div class="stock-price-box">
                     <span id="price-${item.code}">-</span><span class="currency">${item.unit}</span>
@@ -96,7 +105,7 @@
         });
     }
 
-    // 2. 各項目ごとにGASから最新の数値を1つずつ取得する
+    // 2. 各項目ごとにGASから最新の数値を1つずつ取得して反映する関数
     async function getStockPrices() {
         for (const item of items) {
             try {
@@ -107,18 +116,21 @@
                 const priceEl = document.getElementById(`price-${item.code}`);
                 const timeEl = document.getElementById(`time-${item.code}`);
 
+                if (!priceEl || !timeEl) continue; // 要素が見つからない場合はスキップ
+
                 if (data.error) {
                     timeEl.innerText = "エラー: " + data.error;
                     continue;
                 }
 
-                // 為替や株価の小数点以下の桁数を、見やすいように綺麗にフォーマットする
-                // 株価はそのまま、為替は小数点以下2桁〜4桁で丸めると見やすくなります
+                // 表示する数字の小数点以下の桁数を綺麗に整える
                 let displayPrice = data.price;
                 if (item.code === "USD") {
-                    displayPrice = Number(data.price).toFixed(2); // 例: 154.25円
+                    displayPrice = Number(data.price).toFixed(2); // 例: 154.25
                 } else if (item.code === "CNY100") {
-                    displayPrice = Number(data.price).toFixed(4); // 例: 4.6521元
+                    displayPrice = Number(data.price).toFixed(4); // 例: 4.6521
+                } else {
+                    displayPrice = Number(data.price); // 株価は通常の数値
                 }
 
                 priceEl.innerText = displayPrice;
@@ -127,7 +139,10 @@
 
             } catch (error) {
                 console.error(`${item.name}の通信エラー:`, error);
-                document.getElementById(`time-${item.code}`).innerText = "データ取得に失敗しました";
+                const timeEl = document.getElementById(`time-${item.code}`);
+                if (timeEl) {
+                    timeEl.innerText = "データ取得に失敗しました";
+                }
             }
         }
     }
