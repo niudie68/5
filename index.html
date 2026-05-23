@@ -64,9 +64,7 @@
     // ==========================================
     const gasWebAppUrl = "https://script.google.com/macros/s/AKfycbzA2dw2WI56sv9WBBMNvIJ1x6iqfqs3mH4N7V6aVKJSuxVi2elApoeI0av6qWQoVJ57/exec";
 
-    // 表示したい銘柄のリスト
-
-// 表示したい銘柄・為替の全リスト
+    // 表示したい銘柄・為替の全リスト
     const items = [
         { code: "2330", name: "フォーサイド", market: "東証スタンダード", unit: "円" },
         { code: "2370", name: "メディネット", market: "東証グロース", unit: "円" },
@@ -79,18 +77,17 @@
     // 1. 画面にすべてのカードを初期配置する関数
     function initBoard() {
         const board = document.getElementById("stock-board");
-        board.innerHTML = ""; // 初期化
+        board.innerHTML = "";
         
         items.forEach(item => {
             const card = document.createElement("div");
             card.className = "stock-card";
             
-            // 市場・コード表示の文字列を作成（為替と株価で表示形式を分ける）
             let marketText = "";
             if (item.code === "USD" || item.code === "CNY100") {
                 marketText = item.market;
             } else {
-                marketText = `${item.market}: ${item.code}`;
+                marketText = item.market + ": " + item.code;
             }
 
             card.innerHTML = `
@@ -109,28 +106,27 @@
     async function getStockPrices() {
         for (const item of items) {
             try {
-                const requestUrl = `${gasWebAppUrl}?code=${item.code}`;
+                const requestUrl = gasWebAppUrl + "?code=" + item.code;
                 const response = await fetch(requestUrl);
                 const data = await response.json();
                 
-                const priceEl = document.getElementById(`price-${item.code}`);
-                const timeEl = document.getElementById(`time-${item.code}`);
+                const priceEl = document.getElementById("price-" + item.code);
+                const timeEl = document.getElementById("time-" + item.code);
 
-                if (!priceEl || !timeEl) continue; // 要素が見つからない場合はスキップ
+                if (!priceEl || !timeEl) continue;
 
                 if (data.error) {
                     timeEl.innerText = "エラー: " + data.error;
                     continue;
                 }
 
-                // 表示する数字の小数点以下の桁数を綺麗に整える
                 let displayPrice = data.price;
                 if (item.code === "USD") {
-                    displayPrice = Number(data.price).toFixed(2); // 例: 154.25
+                    displayPrice = Number(data.price).toFixed(2);
                 } else if (item.code === "CNY100") {
-                    displayPrice = Number(data.price).toFixed(4); // 例: 4.6521
+                    displayPrice = Number(data.price).toFixed(4);
                 } else {
-                    displayPrice = Number(data.price); // 株価は通常の数値
+                    displayPrice = Number(data.price);
                 }
 
                 priceEl.innerText = displayPrice;
@@ -138,8 +134,8 @@
                 timeEl.innerText = "最終更新: " + now.toLocaleTimeString();
 
             } catch (error) {
-                console.error(`${item.name}の通信エラー:`, error);
-                const timeEl = document.getElementById(`time-${item.code}`);
+                console.error(item.name + "の通信エラー:", error);
+                const timeEl = document.getElementById("time-" + item.code);
                 if (timeEl) {
                     timeEl.innerText = "データ取得に失敗しました";
                 }
