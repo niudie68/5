@@ -1,73 +1,85 @@
 <!DOCTYPE html>
 <html lang="ja">
 <head>
-    <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>フォーサイド株価モニター</title>
-    <style>
-        /* 画面全体のデザイン設定 */
-        body {
-            font-family: 'Helvetica Neue', Arial, sans-serif;
-            background-color: #f4f6f9;
-            display: flex;
-            justify-content: center;
-            align-items: center;
-            height: 100vh;
-            margin: 0;
-        }
-        /* 株価を表示するカードのデザイン */
-        .stock-card {
-            background: #ffffff;
-            padding: 30px;
-            border-radius: 12px;
-            box-shadow: 0 4px 15px rgba(0,0,0,0.1);
-            width: 300px;
-            text-align: center;
-        }
-        .stock-code {
-            font-size: 14px;
-            color: #888;
-            font-weight: bold;
-            margin-bottom: 5px;
-        }
-        .stock-name {
-            font-size: 24px;
-            font-weight: bold;
-            color: #333;
-            margin-bottom: 15px;
-        }
-        .stock-price-box {
-            font-size: 40px;
-            font-weight: bold;
-            color: #d9534f; /* 株価を目立たせる赤色 */
-            margin-bottom: 10px;
-        }
-        .currency {
-            font-size: 20px;
-            margin-left: 5px;
-            color: #333;
-        }
-        .update-time {
-            font-size: 11px;
-            color: #aaa;
-        }
-    </style>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>株価・為替ボード</title>
+  <style>
+    /* 画面全体のデザイン（必要に応じてご自身のデザインに調整してください） */
+    body {
+      font-family: 'Helvetica Neue', Arial, sans-serif;
+      background-color: #f4f5f7;
+      margin: 0;
+      padding: 20px;
+    }
+
+    /* 【最重要】カードを並べるコンテナの設定 */
+    /* display: block にして、カード同士が潰し合わないように安全に縦並び（または横並び）にします */
+    #stock-board {
+      display: block !important; 
+      width: 100%;
+      max-width: 600px;
+      margin: 0 auto;
+    }
+
+    /* 各カードのデザイン（外枠が絶対に潰れないように設定） */
+    .stock-card {
+      display: block !important;
+      background: #ffffff;
+      border-radius: 8px;
+      box-shadow: 0 2px 4px rgba(0,0,0,0.1);
+      padding: 15px;
+      margin-bottom: 15px; /* カードとカードの間に必ず隙間を作る */
+      min-height: 100px;   /* 【重要】カードが半分に潰れないように最小の高さを保証 */
+      box-sizing: border-box !important;
+    }
+
+    .stock-code {
+      font-size: 12px;
+      color: #666;
+      margin-bottom: 5px;
+    }
+
+    .stock-name {
+      font-size: 18px;
+      font-weight: bold;
+      color: #333;
+      margin-bottom: 8px;
+    }
+
+    .stock-price-box {
+      font-size: 24px;
+      font-weight: bold;
+      color: #d93025; /* 赤色ベースの価格表示 */
+      margin-bottom: 5px;
+    }
+
+    .currency {
+      font-size: 14px;
+      color: #333;
+      margin-left: 4px;
+    }
+
+    .update-time {
+      font-size: 11px;
+      color: #999;
+    }
+  </style>
 </head>
 <body>
-  <!-- 株価カードが並ぶコンテナ -->
+
+  <!-- 株価・為替カードが並ぶコンテナ -->
   <div id="stock-board"></div>
 
   <script>
     // ==========================================
-    // 【重要】新しくデプロイし直した 
-    // GASの「ウェブアプリURL」をここに貼り付けてください！
+    // 【重要】ご自身の最新のGASウェブアプリURLを貼り付けてください
     // ==========================================
     const gasWebAppUrl = "https://script.google.com/macros/s/AKfycbzA2dw2WI56sv9WBBMNvIJ1x6iqfqs3mH4N7V6aVKJSuxVi2elApoeI0av6qWQoVJ57/exec";
 
-    // 表示したい銘柄・為替の全リスト（ここでお好きな順番に入れ替えて大丈夫です）
+    // 表示したい銘柄・為替のリスト（重複なしの正しい順番）
     const items = [
         { code: "2330", name: "フォーサイド", market: "東証スタンダード", unit: "円" },
-        { code: "2330", name: "フォーサイド", market: "東証スタンダード", unit: "円" },       
         { code: "2370", name: "メディネット", market: "東証グロース", unit: "円" },
         { code: "6656", name: "インスペック", market: "東証スタンダード", unit: "円" },
         { code: "8086", name: "ニプロ", market: "東証プライム", unit: "円" },
@@ -103,7 +115,6 @@
     // 2. 単発で1つの銘柄データをGASから取得して画面に即反映する関数
     async function fetchSingleItem(item) {
         try {
-            // URL結合時のバグを防ぐため、安全なURLオブジェクトを生成
             const urlObj = new URL(gasWebAppUrl);
             urlObj.searchParams.set("code", item.code);
 
@@ -142,9 +153,8 @@
         }
     }
 
-    // 3. 全銘柄を一斉に（同時に）取得開始する関数
+    // 3. 全銘柄を一斉に取得開始する関数
     function getAllStockPrices() {
-        // ループ（for文）で待たせるのをやめ、すべての銘柄の通信を一瞬で同時に走らせます
         items.forEach(item => {
             fetchSingleItem(item);
         });
@@ -155,5 +165,4 @@
     getAllStockPrices();
   </script>
 </body>
-  
-  </html>
+</html>
