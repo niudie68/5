@@ -65,59 +65,69 @@
     const gasWebAppUrl = "https://script.google.com/macros/s/AKfycbzA2dw2WI56sv9WBBMNvIJ1x6iqfqs3mH4N7V6aVKJSuxVi2elApoeI0av6qWQoVJ57/exec";
 
     // 表示したい銘柄のリスト
-    const stocks = [
-        { code: "2330", name: "フォーサイド", market: "東証スタンダード" },
-        { code: "2370", name: "メディネット", market: "東証グロース" },
-        { code: "6656", name: "インスペック", market: "東証スタンダード" },
-        { code: "8086", name: "ニプロ", market: "東証プライム" }
+
+  // 表示したい銘柄・為替のリスト
+    const items = [
+        { code: "2330", name: "フォーサイド", market: "東証スタンダード", unit: "円" },
+        { code: "2370", name: "メディネット", market: "東証グロース", unit: "円" },
+        { code: "6656", name: "インスペック", market: "東証スタンダード", unit: "円" },
+        { code: "8086", name: "ニプロ", market: "東証プライム", unit: "円" },
+        { code: "USD",  name: "米ドル / 円", market: "為替（1ドル）", unit: "円" },
+        { code: "CNY100", name: "100円の人民元", market: "為替（100円あたり）", unit: "元" }
     ];
 
-    // 1. 画面に4つの銘柄カードを初期配置する
+    // 1. 画面にすべてのカードを初期配置する
     function initBoard() {
         const board = document.getElementById("stock-board");
         board.innerHTML = ""; 
         
-        stocks.forEach(stock => {
+        items.forEach(item => {
             const card = document.createElement("div");
             card.className = "stock-card";
             card.innerHTML = `
-                <div class="stock-code">${stock.market}: ${stock.code}</div>
-                <div class="stock-name">${stock.name}</div>
+                <div class="stock-code">${item.market}${item.code.includes('USD') || item.code.includes('CNY') ? '' : ': ' + item.code}</div>
+                <div class="stock-name">${item.name}</div>
                 <div class="stock-price-box">
-                    <span id="price-${stock.code}">-</span><span class="currency">円</span>
+                    <span id="price-${item.code}">-</span><span class="currency">${item.unit}</span>
                 </div>
-                <div class="update-time" id="time-${stock.code}">データを読み込み中...</div>
+                <div class="update-time" id="time-${item.code}">データを読み込み中...</div>
             `;
             board.appendChild(card);
         });
     }
 
-    // 2. 各銘柄のコードをパラメータに付けて、1つずつGASから正しい株価を取得する
+    // 2. 各項目ごとにGASから最新の数値を1つずつ取得する
     async function getStockPrices() {
-        for (const stock of stocks) {
+        for (const item of items) {
             try {
-                // URLの末尾に「?code=2370」のようにコードをくっつけてGASを叩く
-                const requestUrl = `${gasWebAppUrl}?code=${stock.code}`;
-                
+                const requestUrl = `${gasWebAppUrl}?code=${item.code}`;
                 const response = await fetch(requestUrl);
                 const data = await response.json();
                 
-                const priceEl = document.getElementById(`price-${stock.code}`);
-                const timeEl = document.getElementById(`time-${stock.code}`);
+                const priceEl = document.getElementById(`price-${item.code}`);
+                const timeEl = document.getElementById(`time-${item.code}`);
 
                 if (data.error) {
                     timeEl.innerText = "エラー: " + data.error;
                     continue;
                 }
 
-                // 取得できた株価を、その銘柄専用のカードにだけ表示する
-                priceEl.innerText = data.price;
+                // 為替や株価の小数点以下の桁数を、見やすいように綺麗にフォーマットする
+                // 株価はそのまま、為替は小数点以下2桁〜4桁で丸めると見やすくなります
+                let displayPrice = data.price;
+                if (item.code === "USD") {
+                    displayPrice = Number(data.price).toFixed(2); // 例: 154.25円
+                } else if (item.code === "CNY100") {
+                    displayPrice = Number(data.price).toFixed(4); // 例: 4.6521元
+                }
+
+                priceEl.innerText = displayPrice;
                 const now = new Date();
                 timeEl.innerText = "最終更新: " + now.toLocaleTimeString();
 
             } catch (error) {
-                console.error(`${stock.name}の通信エラー:`, error);
-                document.getElementById(`time-${stock.code}`).innerText = "データ取得に失敗しました";
+                console.error(`${item.name}の通信エラー:`, error);
+                document.getElementById(`time-${item.code}`).innerText = "データ取得に失敗しました";
             }
         }
     }
@@ -126,4 +136,6 @@
     initBoard();
     getStockPrices();
   </script>
-</body></html>
+</body>
+  
+  </html>
