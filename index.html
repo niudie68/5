@@ -64,12 +64,12 @@
     // ==========================================
     const gasWebAppUrl = "https://script.google.com/macros/s/AKfycbzA2dw2WI56sv9WBBMNvIJ1x6iqfqs3mH4N7V6aVKJSuxVi2elApoeI0av6qWQoVJ57/exec";
 
-    // 表示したい銘柄・為替の全リスト
+    // 表示したい銘柄・為替の全リスト（ここでお好きな順番に入れ替えて大丈夫です）
     const items = [
+        { code: "2330", name: "フォーサイド", market: "東証スタンダード", unit: "円" },
         { code: "2370", name: "メディネット", market: "東証グロース", unit: "円" },
         { code: "6656", name: "インスペック", market: "東証スタンダード", unit: "円" },
         { code: "8086", name: "ニプロ", market: "東証プライム", unit: "円" },
-        { code: "2330", name: "フォーサイド", market: "東証スタンダード", unit: "円" },
         { code: "USD",  name: "米ドル / 円", market: "為替（1ドル）", unit: "円" },
         { code: "CNY100", name: "100円の人民元", market: "為替（100円あたり）", unit: "元" }
     ];
@@ -83,12 +83,9 @@
             const card = document.createElement("div");
             card.className = "stock-card";
             
-            let marketText = "";
-            if (item.code === "USD" || item.code === "CNY100") {
-                marketText = item.market;
-            } else {
-                marketText = item.market + ": " + item.code;
-            }
+            let marketText = (item.code === "USD" || item.code === "CNY100") 
+                ? item.market 
+                : item.market + ": " + item.code;
 
             card.innerHTML = `
                 <div class="stock-code">${marketText}</div>
@@ -102,50 +99,59 @@
         });
     }
 
-    // 2. 各項目ごとにGASから最新の数値を1つずつ取得して反映する関数
-    async function getStockPrices() {
-        for (const item of items) {
-            try {
-                const requestUrl = gasWebAppUrl + "?code=" + item.code;
-                const response = await fetch(requestUrl);
-                const data = await response.json();
-                
-                const priceEl = document.getElementById("price-" + item.code);
-                const timeEl = document.getElementById("time-" + item.code);
+    // 2. 単発で1つの銘柄データをGASから取得して画面に即反映する関数
+    async function fetchSingleItem(item) {
+        try {
+            // URL結合時のバグを防ぐため、安全なURLオブジェクトを生成
+            const urlObj = new URL(gasWebAppUrl);
+            urlObj.searchParams.set("code", item.code);
 
-                if (!priceEl || !timeEl) continue;
+            const response = await fetch(urlObj.toString());
+            const data = await response.json();
+            
+            const priceEl = document.getElementById("price-" + item.code);
+            const timeEl = document.getElementById("time-" + item.code);
 
-                if (data.error) {
-                    timeEl.innerText = "エラー: " + data.error;
-                    continue;
-                }
+            if (!priceEl || !timeEl) return;
 
-                let displayPrice = data.price;
-                if (item.code === "USD") {
-                    displayPrice = Number(data.price).toFixed(2);
-                } else if (item.code === "CNY100") {
-                    displayPrice = Number(data.price).toFixed(4);
-                } else {
-                    displayPrice = Number(data.price);
-                }
+            if (data.error) {
+                timeEl.innerText = "エラー: " + data.error;
+                return;
+            }
 
-                priceEl.innerText = displayPrice;
-                const now = new Date();
-                timeEl.innerText = "最終更新: " + now.toLocaleTimeString();
+            let displayPrice = data.price;
+            if (item.code === "USD") {
+                displayPrice = Number(data.price).toFixed(2);
+            } else if (item.code === "CNY100") {
+                displayPrice = Number(data.price).toFixed(4);
+            } else {
+                displayPrice = Number(data.price);
+            }
 
-            } catch (error) {
-                console.error(item.name + "の通信エラー:", error);
-                const timeEl = document.getElementById("time-" + item.code);
-                if (timeEl) {
-                    timeEl.innerText = "データ取得に失敗しました";
-                }
+            priceEl.innerText = displayPrice;
+            const now = new Date();
+            timeEl.innerText = "最終更新: " + now.toLocaleTimeString();
+
+        } catch (error) {
+            console.error(item.name + "の取得に失敗:", error);
+            const timeEl = document.getElementById("time-" + item.code);
+            if (timeEl) {
+                timeEl.innerText = "データ取得に失敗しました";
             }
         }
     }
 
+    // 3. 全銘柄を一斉に（同時に）取得開始する関数
+    function getAllStockPrices() {
+        // ループ（for文）で待たせるのをやめ、すべての銘柄の通信を一瞬で同時に走らせます
+        items.forEach(item => {
+            fetchSingleItem(item);
+        });
+    }
+
     // 実行
     initBoard();
-    getStockPrices();
+    getAllStockPrices();
   </script>
 </body>
   
