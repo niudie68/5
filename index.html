@@ -1,0 +1,129 @@
+<!DOCTYPE html>
+<html lang="ja">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>フォーサイド株価モニター</title>
+    <style>
+        /* 画面全体のデザイン設定 */
+        body {
+            font-family: 'Helvetica Neue', Arial, sans-serif;
+            background-color: #f4f6f9;
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            height: 100vh;
+            margin: 0;
+        }
+        /* 株価を表示するカードのデザイン */
+        .stock-card {
+            background: #ffffff;
+            padding: 30px;
+            border-radius: 12px;
+            box-shadow: 0 4px 15px rgba(0,0,0,0.1);
+            width: 300px;
+            text-align: center;
+        }
+        .stock-code {
+            font-size: 14px;
+            color: #888;
+            font-weight: bold;
+            margin-bottom: 5px;
+        }
+        .stock-name {
+            font-size: 24px;
+            font-weight: bold;
+            color: #333;
+            margin-bottom: 15px;
+        }
+        .stock-price-box {
+            font-size: 40px;
+            font-weight: bold;
+            color: #d9534f; /* 株価を目立たせる赤色 */
+            margin-bottom: 10px;
+        }
+        .currency {
+            font-size: 20px;
+            margin-left: 5px;
+            color: #333;
+        }
+        .update-time {
+            font-size: 11px;
+            color: #aaa;
+        }
+    </style>
+</head>
+<body>
+  <!-- 株価カードが並ぶコンテナ -->
+  <div id="stock-board"></div>
+
+  <script>
+    // ==========================================
+    // 【重要】新しくデプロイし直した 
+    // GASの「ウェブアプリURL」をここに貼り付けてください！
+    // ==========================================
+    const gasWebAppUrl = "https://script.google.com/macros/s/AKfycbzA2dw2WI56sv9WBBMNvIJ1x6iqfqs3mH4N7V6aVKJSuxVi2elApoeI0av6qWQoVJ57/exec";
+
+    // 表示したい銘柄のリスト
+    const stocks = [
+        { code: "2330", name: "フォーサイド", market: "東証スタンダード" },
+        { code: "2370", name: "メディネット", market: "東証グロース" },
+        { code: "6656", name: "インスペック", market: "東証スタンダード" },
+        { code: "8086", name: "ニプロ", market: "東証プライム" }
+    ];
+
+    // 1. 画面に4つの銘柄カードを初期配置する
+    function initBoard() {
+        const board = document.getElementById("stock-board");
+        board.innerHTML = ""; 
+        
+        stocks.forEach(stock => {
+            const card = document.createElement("div");
+            card.className = "stock-card";
+            card.innerHTML = `
+                <div class="stock-code">${stock.market}: ${stock.code}</div>
+                <div class="stock-name">${stock.name}</div>
+                <div class="stock-price-box">
+                    <span id="price-${stock.code}">-</span><span class="currency">円</span>
+                </div>
+                <div class="update-time" id="time-${stock.code}">データを読み込み中...</div>
+            `;
+            board.appendChild(card);
+        });
+    }
+
+    // 2. 各銘柄のコードをパラメータに付けて、1つずつGASから正しい株価を取得する
+    async function getStockPrices() {
+        for (const stock of stocks) {
+            try {
+                // URLの末尾に「?code=2370」のようにコードをくっつけてGASを叩く
+                const requestUrl = `${gasWebAppUrl}?code=${stock.code}`;
+                
+                const response = await fetch(requestUrl);
+                const data = await response.json();
+                
+                const priceEl = document.getElementById(`price-${stock.code}`);
+                const timeEl = document.getElementById(`time-${stock.code}`);
+
+                if (data.error) {
+                    timeEl.innerText = "エラー: " + data.error;
+                    continue;
+                }
+
+                // 取得できた株価を、その銘柄専用のカードにだけ表示する
+                priceEl.innerText = data.price;
+                const now = new Date();
+                timeEl.innerText = "最終更新: " + now.toLocaleTimeString();
+
+            } catch (error) {
+                console.error(`${stock.name}の通信エラー:`, error);
+                document.getElementById(`time-${stock.code}`).innerText = "データ取得に失敗しました";
+            }
+        }
+    }
+
+    // 実行
+    initBoard();
+    getStockPrices();
+  </script>
+</body></html>
